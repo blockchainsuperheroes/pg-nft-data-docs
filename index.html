@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pentagon NFT Data API — Developer Docs</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #0a0a0f;
+            --surface: #12121a;
+            --surface2: #1a1a26;
+            --border: #2a2a3a;
+            --text: #e0e0e8;
+            --text-dim: #8888a0;
+            --accent: #7c5cff;
+            --accent-dim: #5a3fd6;
+            --green: #3ddc84;
+            --red: #ff4c6a;
+            --yellow: #ffc857;
+            --code-bg: #0d0d15;
+        }
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+        a { color: var(--accent); text-decoration: none; }
+        a:hover { text-decoration: underline; }
+
+        /* Nav */
+        .nav {
+            position: fixed; top: 0; left: 0; right: 0;
+            background: rgba(10,10,15,0.92); backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100; padding: 0 24px; height: 56px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .nav-logo { font-weight: 700; font-size: 16px; display: flex; align-items: center; gap: 10px; }
+        .nav-links { display: flex; gap: 24px; font-size: 14px; }
+        .nav-links a { color: var(--text-dim); }
+        .nav-links a:hover, .nav-links a.active { color: var(--text); text-decoration: none; }
+
+        /* Layout */
+        .container { max-width: 960px; margin: 0 auto; padding: 80px 24px 60px; }
+        .hero { text-align: center; padding: 40px 0 48px; }
+        .hero h1 { font-size: 36px; font-weight: 700; margin-bottom: 12px; }
+        .hero p { font-size: 18px; color: var(--text-dim); max-width: 600px; margin: 0 auto; }
+
+        .badge { display: inline-block; padding: 3px 10px; border-radius: 12px; font-size: 12px; font-weight: 600; }
+        .badge-green { background: rgba(61,220,132,0.15); color: var(--green); }
+        .badge-yellow { background: rgba(255,200,87,0.15); color: var(--yellow); }
+        .badge-purple { background: rgba(124,92,255,0.15); color: var(--accent); }
+        .badge-red { background: rgba(255,76,106,0.15); color: var(--red); }
+
+        /* Sections */
+        section { margin-bottom: 48px; }
+        section h2 { font-size: 24px; font-weight: 700; margin-bottom: 16px; padding-bottom: 8px; border-bottom: 1px solid var(--border); }
+        section h3 { font-size: 18px; font-weight: 600; margin: 24px 0 12px; }
+        section p { margin-bottom: 12px; color: var(--text-dim); }
+
+        /* Tables */
+        table { width: 100%; border-collapse: collapse; margin: 16px 0; font-size: 14px; }
+        th { text-align: left; padding: 10px 12px; background: var(--surface2); color: var(--text); font-weight: 600; border-bottom: 2px solid var(--border); }
+        td { padding: 10px 12px; border-bottom: 1px solid var(--border); color: var(--text-dim); }
+        tr:hover td { background: var(--surface); }
+        .method { font-weight: 700; font-size: 13px; font-family: monospace; }
+        .method-post { color: var(--green); }
+        .method-get { color: var(--accent); }
+        .endpoint { font-family: 'JetBrains Mono', monospace; font-size: 13px; color: var(--text); }
+
+        /* Code */
+        pre { background: var(--code-bg); border: 1px solid var(--border); border-radius: 8px; padding: 16px; overflow-x: auto; margin: 12px 0; font-size: 13px; line-height: 1.5; }
+        code { font-family: 'JetBrains Mono', 'Fira Code', monospace; }
+        p code, td code, li code { background: var(--surface2); padding: 2px 6px; border-radius: 4px; font-size: 13px; }
+
+        /* Cards */
+        .card-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; margin: 16px 0; }
+        .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 20px; }
+        .card h4 { font-size: 16px; margin-bottom: 8px; }
+        .card p { font-size: 14px; margin-bottom: 0; }
+
+        /* Tabs */
+        .tabs { display: flex; gap: 0; border-bottom: 1px solid var(--border); margin-bottom: 0; }
+        .tab { padding: 10px 20px; cursor: pointer; font-size: 14px; color: var(--text-dim); border-bottom: 2px solid transparent; }
+        .tab:hover { color: var(--text); }
+        .tab.active { color: var(--accent); border-bottom-color: var(--accent); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; }
+
+        /* Alert box */
+        .alert { padding: 16px 20px; border-radius: 8px; margin: 16px 0; font-size: 14px; }
+        .alert-warning { background: rgba(255,200,87,0.1); border-left: 3px solid var(--yellow); }
+        .alert-info { background: rgba(124,92,255,0.1); border-left: 3px solid var(--accent); }
+        .alert-success { background: rgba(61,220,132,0.1); border-left: 3px solid var(--green); }
+
+        /* VIP badge */
+        .vip-section { border: 1px solid var(--accent); border-radius: 12px; padding: 24px; margin: 24px 0; background: rgba(124,92,255,0.05); }
+        .vip-section h3 { color: var(--accent); margin-top: 0; }
+
+        ul, ol { margin: 8px 0 16px 24px; }
+        li { margin-bottom: 6px; color: var(--text-dim); }
+
+        /* Footer */
+        .footer { text-align: center; padding: 32px 0; border-top: 1px solid var(--border); color: var(--text-dim); font-size: 13px; }
+
+        @media (max-width: 768px) {
+            .nav-links { display: none; }
+            .hero h1 { font-size: 28px; }
+            .card-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+
+<nav class="nav">
+    <div class="nav-logo">
+        &#x2B21; Pentagon NFT Data API
+    </div>
+    <div class="nav-links">
+        <a href="#overview" class="active">Overview</a>
+        <a href="#getting-started">Getting Started</a>
+        <a href="#endpoints">Endpoints</a>
+        <a href="#chains">Chains</a>
+        <a href="#collections">Collections</a>
+        <a href="#architecture">Architecture</a>
+        <a href="#examples">Examples</a>
+    </div>
+</nav>
+
+<div class="container">
+
+    <div class="hero">
+        <h1>Pentagon NFT Data API</h1>
+        <p>Cross-chain NFT ownership, metadata, and transfer history for the Pentagon Games ecosystem.</p>
+        <div style="margin-top: 16px; display: flex; gap: 8px; justify-content: center;">
+            <span class="badge badge-green">Live</span>
+            <span class="badge badge-purple">49 Collections</span>
+            <span class="badge badge-yellow">14 Chains</span>
+        </div>
+    </div>
+
+    <!-- GETTING STARTED -->
+    <section id="getting-started" style="border: 2px solid var(--accent); border-radius: 12px; padding: 28px; background: rgba(124,92,255,0.06);">
+        <h2 style="border-bottom-color: var(--accent);">&#x1F680; Getting Started</h2>
+        <p style="color: var(--text); font-size: 16px;">Get up and running with the NFT Data API in three steps.</p>
+
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 16px; margin: 20px 0;">
+            <div class="card" style="border-color: var(--accent);">
+                <h4>Step 1: Get an App Key</h4>
+                <p>Register at <a href="https://cli.pentagon.games">cli.pentagon.games</a> or contact the Pentagon Games team:</p>
+                <ul style="margin-bottom: 0;">
+                    <li>Email: <a href="mailto:nftprof@pentagon.games">nftprof@pentagon.games</a></li>
+                    <li>Discord: <a href="https://discord.gg/pentagongamesxp">Pentagon Games</a></li>
+                </ul>
+            </div>
+            <div class="card" style="border-color: var(--accent);">
+                <h4>Step 2: Add the Header</h4>
+                <p>Include your App Key in all requests for higher rate limits:</p>
+                <pre style="margin-bottom: 0;"><code>X-PG-App-Key: pk_live_your_key</code></pre>
+            </div>
+            <div class="card" style="border-color: var(--accent);">
+                <h4>Step 3: Query NFTs</h4>
+                <p>Look up ownership, metadata, and transfers across 14 chains with a single API call.</p>
+            </div>
+        </div>
+
+        <div class="alert alert-info" style="margin-bottom: 0;">
+            <strong>Public access available:</strong> All endpoints work without an app key at a reduced rate limit (10 req/min). Authenticated requests get up to 100-500 req/min depending on your key tier.
+        </div>
+    </section>
+
+    <!-- OVERVIEW -->
+    <section id="overview">
+        <h2>Overview</h2>
+        <p>The Pentagon NFT Data API provides unified NFT ownership tracking across the Pentagon Games ecosystem. Query any wallet, any chain, any collection &mdash; one API, one answer.</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h4>&#x1F50D; Ownership Lookup</h4>
+                <p>Find all NFTs owned by any wallet address, filterable by chain, collection, or contract.</p>
+            </div>
+            <div class="card">
+                <h4>&#x1F310; Multi-Chain</h4>
+                <p>Ethereum, Polygon, BSC, Arbitrum, Pentagon Chain, and 9 more networks tracked in real-time.</p>
+            </div>
+            <div class="card">
+                <h4>&#x1F4CA; Metadata &amp; Stats</h4>
+                <p>Token metadata, traits, collection stats, holder counts, and transfer history.</p>
+            </div>
+            <div class="card">
+                <h4>&#x26A1; Fast &amp; Reliable</h4>
+                <p>Sub-second queries backed by a three-layer sync engine. Pentagon chain gets real-time updates.</p>
+            </div>
+        </div>
+
+        <h3>Base URL</h3>
+        <pre><code>https://nft-data.pentagon.games</code></pre>
+    </section>
+
+    <!-- AUTHENTICATION -->
+    <section id="auth">
+        <h2>Authentication</h2>
+
+        <p>Pass your app key via the <code>X-PG-App-Key</code> header:</p>
+        <pre><code>curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/nft/owner/0x1234..."</code></pre>
+
+        <h3>Rate Limits</h3>
+        <table>
+            <tr><th>Auth Level</th><th>Limit</th><th>Scope</th></tr>
+            <tr><td>No key (public)</td><td>10 req/min</td><td>Per IP address</td></tr>
+            <tr><td>App key (web)</td><td>60&ndash;100 req/min</td><td>Per key</td></tr>
+            <tr><td>App key (server)</td><td>100&ndash;500 req/min</td><td>Per key</td></tr>
+        </table>
+        <p>Rate limits are configurable per app key. When exceeded, the API returns <code>429 Too Many Requests</code> with a <code>retry_after</code> field.</p>
+
+        <div class="alert alert-info">
+            <strong>Same keys, multiple APIs:</strong> App keys issued for the Pentagon Identity API also work for the NFT Data API. One key, multiple services.
+        </div>
+    </section>
+
+    <!-- ENDPOINTS -->
+    <section id="endpoints">
+        <h2>API Endpoints</h2>
+
+        <h3>Quick Reference</h3>
+        <table>
+            <tr><th>Method</th><th>Endpoint</th><th>Description</th></tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/</td>
+                <td>Health check &mdash; returns service status</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/nft/owner/:address</td>
+                <td>All NFTs owned by a wallet</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/nft/:contract/:tokenId</td>
+                <td>Single NFT details + metadata</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/collections</td>
+                <td>List all tracked collections</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/collection/:contract/stats</td>
+                <td>Collection ownership statistics</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/nft/:contract/:tokenId/transfers</td>
+                <td>Transfer history for an NFT</td>
+            </tr>
+        </table>
+
+        <!-- Owner Lookup -->
+        <h3 id="ep-owner">Look Up NFTs by Owner</h3>
+        <pre><code>GET /api/v1/nft/owner/:wallet_address</code></pre>
+        <p>Returns all NFTs owned by a wallet address across all tracked chains and collections.</p>
+
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>wallet_address</code></td><td>path</td><td>Yes</td><td>Ethereum-style wallet address (0x...)</td></tr>
+            <tr><td><code>chain_id</code></td><td>query</td><td>No</td><td>Filter by chain ID (e.g., <code>3344</code> for Pentagon)</td></tr>
+            <tr><td><code>contract</code></td><td>query</td><td>No</td><td>Filter by contract address</td></tr>
+            <tr><td><code>collection</code></td><td>query</td><td>No</td><td>Filter by collection name</td></tr>
+            <tr><td><code>page</code></td><td>query</td><td>No</td><td>Page number (default: 1)</td></tr>
+            <tr><td><code>limit</code></td><td>query</td><td>No</td><td>Results per page (default: 50, max: 200)</td></tr>
+        </table>
+
+        <p><strong>Example request:</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/nft/owner/0x37224cFD71347Da6f097c94B8649f9C552f803c9?chain_id=3344"</code></pre>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "total": 17,
+  "page": 1,
+  "limit": 50,
+  "results": [
+    {
+      "token_id": "4201",
+      "name": "BCSH #4201",
+      "owner": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
+      "image": "https://assets.pentagon.games/bcsh/4201.png",
+      "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
+      "chain_id": 3344,
+      "chain_name": "Pentagon",
+      "collection": "BCSH OASYS",
+      "type": "ERC721"
+    }
+  ]
+}</code></pre>
+
+        <!-- Single NFT -->
+        <h3 id="ep-token">Look Up NFT by Token ID</h3>
+        <pre><code>GET /api/v1/nft/:contract_address/:token_id</code></pre>
+        <p>Returns details for a specific NFT including current owner, metadata, and trait attributes.</p>
+
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>contract_address</code></td><td>path</td><td>Yes</td><td>NFT contract address</td></tr>
+            <tr><td><code>token_id</code></td><td>path</td><td>Yes</td><td>Token ID</td></tr>
+        </table>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "token_id": "4201",
+  "name": "BCSH #4201",
+  "owner": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
+  "image": "https://assets.pentagon.games/bcsh/4201.png",
+  "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
+  "chain_id": 3344,
+  "collection": "BCSH OASYS",
+  "type": "ERC721",
+  "metadata": [
+    {"trait_type": "Background", "value": "Blue"},
+    {"trait_type": "Rarity", "value": "Legendary"}
+  ],
+  "source": {
+    "tokenUri": "https://id.peg.gg/api/metadata/4201",
+    "lastSync": "2026-05-10T23:36:30Z"
+  }
+}</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Two-layer metadata:</strong> The <code>metadata</code> field contains cached data (fast). The <code>source.tokenUri</code> points to the authoritative on-chain metadata endpoint if you need a live fetch.
+        </div>
+
+        <!-- Collections List -->
+        <h3 id="ep-collections">List Tracked Collections</h3>
+        <pre><code>GET /api/v1/collections</code></pre>
+        <p>Returns all actively tracked NFT collections with contract addresses, chain info, and sync status.</p>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "total": 49,
+  "collections": [
+    {
+      "name": "BCSH OASYS",
+      "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
+      "chain_id": 3344,
+      "chain_name": "Pentagon",
+      "type": "ERC721",
+      "sync_status": "healthy",
+      "total_supply": 10000,
+      "last_synced": "2026-05-10T23:00:00Z"
+    }
+  ]
+}</code></pre>
+
+        <!-- Collection Stats -->
+        <h3 id="ep-stats">Collection Stats</h3>
+        <pre><code>GET /api/v1/collection/:contract_address/stats</code></pre>
+        <p>Returns ownership statistics for a collection including total supply, unique holder count, and top holders.</p>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
+  "name": "BCSH OASYS",
+  "total_supply": 10000,
+  "unique_owners": 3421,
+  "top_holders": [
+    {"address": "0x...", "count": 150},
+    {"address": "0x...", "count": 87}
+  ]
+}</code></pre>
+
+        <!-- Transfer History -->
+        <h3 id="ep-transfers">Transfer History</h3>
+        <pre><code>GET /api/v1/nft/:contract_address/:token_id/transfers</code></pre>
+        <p>Returns the full transfer history for a specific NFT, from mint to present.</p>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "transfers": [
+    {
+      "from": "0x0000000000000000000000000000000000000000",
+      "to": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
+      "tx_hash": "0xabc123...",
+      "block_number": 1234567,
+      "timestamp": "2026-01-15T12:30:00Z"
+    }
+  ]
+}</code></pre>
+
+        <!-- Errors -->
+        <h3>Error Responses</h3>
+        <pre><code>// 401 &mdash; Invalid or inactive app key
+{"error": "Invalid or inactive app key"}
+
+// 404 &mdash; NFT or collection not found
+{"error": "NFT not found"}
+
+// 429 &mdash; Rate limit exceeded
+{"error": "Rate limit exceeded", "retry_after": 60}</code></pre>
+    </section>
+    <!-- SUPPORTED CHAINS -->
+    <section id="chains">
+        <h2>Supported Chains</h2>
+        <p>The NFT Data API tracks collections across 14 blockchain networks. Pentagon Chain contracts get real-time WebSocket tracking (sub-second updates). All other chains use block-range scanning with 2&ndash;6 minute sync intervals.</p>
+
+        <table>
+            <tr><th>Chain</th><th>Chain ID</th><th>Sync Mode</th><th>Status</th></tr>
+            <tr><td>Pentagon</td><td><code>3344</code></td><td>Real-time + Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Ethereum</td><td><code>1</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>BSC</td><td><code>56</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Polygon</td><td><code>137</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Arbitrum</td><td><code>42161</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Core</td><td><code>1116</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>OASYS</td><td><code>248</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Monad</td><td><code>143</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>Avalanche</td><td><code>43114</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+            <tr><td>SKALE Nebula</td><td><code>1482601649</code></td><td>Scanner</td><td><span class="badge badge-green">Live</span></td></tr>
+        </table>
+
+        <div class="alert alert-success">
+            <strong>Pentagon Chain advantage:</strong> Since Pentagon Games operates the chain RPC, Pentagon chain contracts get real-time WebSocket event tracking with zero rate limits &mdash; ownership updates within ~2 seconds of on-chain transfers.
+        </div>
+    </section>
+
+    <!-- TRACKED COLLECTIONS -->
+    <section id="collections">
+        <h2>Tracked Collections</h2>
+        <p>49 collections are actively tracked. Here are the key Pentagon Chain collections. Use <code>GET /api/v1/collections</code> for the full list.</p>
+
+        <h3>Pentagon Chain (3344)</h3>
+        <table>
+            <tr><th>Collection</th><th>Contract</th><th>Type</th></tr>
+            <tr><td>BCSH OASYS</td><td><code>0xcDAD57bFc48E8373280C6dc3039C5169353B6879</code></td><td>ERC721</td></tr>
+            <tr><td>BCSH Vaelion</td><td><code>0x35A31E23FB1AAD207Ad4075C52e981dC9165059b</code></td><td>ERC721</td></tr>
+            <tr><td>BCSH No_5</td><td><code>0x0A5FE002F2eD146415A1f4865DE1c180a39D599E</code></td><td>ERC721</td></tr>
+            <tr><td>BCSH Tamago</td><td><code>0x2444D26cC268848f2B1bd837456537510F1aac81</code></td><td>ERC721</td></tr>
+            <tr><td>BCSH Baiyi</td><td><code>0xF8C869a5575f44fB9b68F670e6B158B30fB8Ccf5</code></td><td>ERC721</td></tr>
+            <tr><td>GCN NFT</td><td><code>0x42D97d553Ee71deF76a131e48Fc42BCf8da3B141</code></td><td>ERC721</td></tr>
+            <tr><td>GCN Shards</td><td><code>0xfd8276d1745761D3C5C55269fe4466FCD31D9dD3</code></td><td>ERC1155</td></tr>
+            <tr><td>Gunnies PFP</td><td><code>0x7a8a3236e3783E7cC33b97729378e31Cf14d3Ebc</code></td><td>ERC721</td></tr>
+            <tr><td>PentaPets</td><td><code>0xe6BdE156369D209C4d420E966541eE17093705B5</code></td><td>ERC721</td></tr>
+            <tr><td>RugPull Art</td><td><code>0xd77f88ef51b2589d132d6eb61068079f61dfe4a3</code></td><td>ERC721</td></tr>
+            <tr><td>Gemry</td><td><code>0xc05b96b89Ce46c306223E3f4c413891d17E1De70</code></td><td>ERC721</td></tr>
+            <tr><td>PEGNAMES</td><td><code>0xf97EB9f8293D1FD5587a809Eb74518c300738d07</code></td><td>ERC721</td></tr>
+            <tr><td>EtherFantasy</td><td><code>0x8F83c6122Dd4d275B53a7846B3D3dB29Cca1e698</code></td><td>ERC721</td></tr>
+        </table>
+
+        <h3>Ethereum (1)</h3>
+        <table>
+            <tr><th>Collection</th><th>Contract</th><th>Type</th></tr>
+            <tr><td>BCSH ETH</td><td><code>0x53b719422f427Fe158f480Bfc3Cf32201e416F89</code></td><td>ERC721</td></tr>
+            <tr><td>Moonbirds</td><td colspan="2"><em>See <code>GET /api/v1/collections</code> for addresses</em></td></tr>
+            <tr><td>Azuki</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>Doodles</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>CLONE X</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>Cool Cats</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>Lil Pudgys</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>World of Women</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>Nakamigos</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>0N1 Force</td><td colspan="2"><em>&rdquo;</em></td></tr>
+            <tr><td>+ more</td><td colspan="2"><em>Full list via API</em></td></tr>
+        </table>
+
+        <h3>Adding a New Collection</h3>
+        <p>Want your collection tracked by the Pentagon NFT Data API? Contact the Pentagon Games team with:</p>
+        <ul>
+            <li><strong>Contract address</strong> and <strong>chain ID</strong></li>
+            <li><strong>Collection name</strong> and type (ERC721 or ERC1155)</li>
+            <li><strong>Metadata endpoint</strong> (tokenURI or custom API), if applicable</li>
+        </ul>
+        <p>Once registered, all three sync layers begin tracking your collection automatically. You'll receive an app key for API access.</p>
+        <div class="alert alert-info">
+            Contact: <a href="mailto:nftprof@pentagon.games">nftprof@pentagon.games</a> or <a href="https://discord.gg/pentagongamesxp">Discord</a>
+        </div>
+    </section>
+
+    <!-- ARCHITECTURE -->
+    <section id="architecture">
+        <h2>How It Works</h2>
+        <p>The NFT Data API is backed by a three-layer sync engine that guarantees ownership accuracy. Every layer cross-checks the others &mdash; if they disagree, on-chain truth wins.</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h4>&#x1F4E1; Layer 1: Real-Time Listener</h4>
+                <p>WebSocket subscriptions to on-chain <code>Transfer</code> events. Ownership updates within ~2 seconds. Currently active for Pentagon Chain contracts.</p>
+            </div>
+            <div class="card">
+                <h4>&#x1F50E; Layer 2: Block-Range Scanner</h4>
+                <p>Periodic <code>eth_getLogs()</code> scanning from saved block checkpoint to chain head. Runs every 2&ndash;6 minutes. Covers all 14 chains. Never misses blocks &mdash; resumes from checkpoint even after downtime.</p>
+            </div>
+            <div class="card">
+                <h4>&#x2705; Layer 3: On-Chain Verifier</h4>
+                <p>Periodic <code>ownerOf()</code> spot checks comparing database state to on-chain ground truth. Catches edge cases like contract upgrades or admin transfers.</p>
+            </div>
+        </div>
+
+        <h3>Triangulation</h3>
+        <p>When layers disagree on ownership:</p>
+        <ul>
+            <li><strong>Scanner</strong> (Layer 2) takes priority over <strong>Listener</strong> (Layer 1) &mdash; block-range scanning is more reliable than real-time subscriptions</li>
+            <li>If disagreement persists, the <strong>Verifier</strong> (Layer 3) calls <code>ownerOf()</code> on-chain</li>
+            <li><strong>On-chain is always ground truth</strong></li>
+        </ul>
+
+        <div class="alert alert-success">
+            <strong>Result:</strong> Triple-verified ownership data. No stale records, no missed transfers, no silent failures.
+        </div>
+    </section>
+
+    <!-- INTEGRATION EXAMPLES -->
+    <section id="examples">
+        <h2>Integration Examples</h2>
+
+        <div class="tabs">
+            <div class="tab active" onclick="switchTab(event, 'tab-python')">Python</div>
+            <div class="tab" onclick="switchTab(event, 'tab-js')">JavaScript</div>
+            <div class="tab" onclick="switchTab(event, 'tab-bot')">Discord Bot</div>
+            <div class="tab" onclick="switchTab(event, 'tab-curl')">cURL</div>
+        </div>
+
+        <div id="tab-python" class="tab-content active">
+            <pre><code>import requests
+
+API_BASE = "https://nft-data.pentagon.games"
+APP_KEY = "pk_live_your_key"
+HEADERS = {"X-PG-App-Key": APP_KEY}
+
+def get_nfts(wallet, chain_id=None):
+    """Fetch all NFTs owned by a wallet."""
+    url = f"{API_BASE}/api/v1/nft/owner/{wallet}"
+    params = {}
+    if chain_id:
+        params["chain_id"] = chain_id
+    resp = requests.get(url, headers=HEADERS, params=params)
+    resp.raise_for_status()
+    return resp.json()
+
+def get_nft_detail(contract, token_id):
+    """Fetch metadata for a specific NFT."""
+    url = f"{API_BASE}/api/v1/nft/{contract}/{token_id}"
+    resp = requests.get(url, headers=HEADERS)
+    resp.raise_for_status()
+    return resp.json()
+
+# Example: List all Pentagon chain NFTs for a wallet
+wallet = "0x37224cFD71347Da6f097c94B8649f9C552f803c9"
+data = get_nfts(wallet, chain_id=3344)
+print(f"Found {data['total']} NFTs on Pentagon Chain")
+for nft in data["results"]:
+    print(f"  {nft['collection']} #{nft['token_id']} - {nft.get('name', 'N/A')}")</code></pre>
+        </div>
+
+        <div id="tab-js" class="tab-content">
+            <pre><code>const API_BASE = "https://nft-data.pentagon.games";
+const APP_KEY = "pk_live_your_key";
+
+async function getNFTs(wallet, chainId) {
+  const params = new URLSearchParams();
+  if (chainId) params.set("chain_id", chainId);
+
+  const res = await fetch(
+    `${API_BASE}/api/v1/nft/owner/${wallet}?${params}`,
+    { headers: { "X-PG-App-Key": APP_KEY } }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+async function getNFTDetail(contract, tokenId) {
+  const res = await fetch(
+    `${API_BASE}/api/v1/nft/${contract}/${tokenId}`,
+    { headers: { "X-PG-App-Key": APP_KEY } }
+  );
+  if (!res.ok) throw new Error(`HTTP ${res.status}`);
+  return res.json();
+}
+
+// Example: Check if a wallet holds any Gunnies PFPs
+const GUNNIES = "0x7a8a3236e3783E7cC33b97729378e31Cf14d3Ebc";
+const wallet = "0x37224cFD71347Da6f097c94B8649f9C552f803c9";
+const data = await getNFTs(wallet, 3344);
+const gunnies = data.results.filter(n =&gt; n.contract.toLowerCase() === GUNNIES.toLowerCase());
+console.log(`Wallet holds ${gunnies.length} Gunnies PFP(s)`);</code></pre>
+        </div>
+
+        <div id="tab-bot" class="tab-content">
+            <pre><code>// Discord.js bot &mdash; NFT verification command
+const { SlashCommandBuilder } = require("discord.js");
+
+const API_BASE = "https://nft-data.pentagon.games";
+const APP_KEY = "pk_live_your_key";
+
+module.exports = {
+  data: new SlashCommandBuilder()
+    .setName("verify-nft")
+    .setDescription("Check NFT ownership for a wallet")
+    .addStringOption(opt =&gt;
+      opt.setName("wallet").setDescription("Wallet address").setRequired(true)
+    )
+    .addStringOption(opt =&gt;
+      opt.setName("collection").setDescription("Collection name filter")
+    ),
+
+  async execute(interaction) {
+    await interaction.deferReply();
+
+    const wallet = interaction.options.getString("wallet");
+    const collection = interaction.options.getString("collection");
+
+    const params = new URLSearchParams();
+    if (collection) params.set("collection", collection);
+
+    const res = await fetch(
+      `${API_BASE}/api/v1/nft/owner/${wallet}?${params}`,
+      { headers: { "X-PG-App-Key": APP_KEY } }
+    );
+    const data = await res.json();
+
+    if (data.total === 0) {
+      return interaction.editReply("No NFTs found for this wallet.");
+    }
+
+    const lines = data.results.slice(0, 10).map(
+      nft =&gt; `**${nft.collection}** #${nft.token_id}`
+    );
+
+    await interaction.editReply(
+      `Found **${data.total}** NFT(s):\n${lines.join("\n")}`
+    );
+  }
+};</code></pre>
+        </div>
+
+        <div id="tab-curl" class="tab-content">
+            <pre><code># Health check
+curl "https://nft-data.pentagon.games/"
+
+# Look up NFTs by owner (public, no key)
+curl "https://nft-data.pentagon.games/api/v1/nft/owner/0x37224cFD71347Da6f097c94B8649f9C552f803c9"
+
+# Look up NFTs with app key + chain filter
+curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/nft/owner/0x37224cFD71347Da6f097c94B8649f9C552f803c9?chain_id=3344"
+
+# Single NFT detail
+curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/nft/0xcDAD57bFc48E8373280C6dc3039C5169353B6879/4201"
+
+# List all tracked collections
+curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/collections"
+
+# Collection stats
+curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/collection/0xcDAD57bFc48E8373280C6dc3039C5169353B6879/stats"
+
+# Transfer history
+curl -H "X-PG-App-Key: pk_live_your_key" \
+  "https://nft-data.pentagon.games/api/v1/nft/0xcDAD57bFc48E8373280C6dc3039C5169353B6879/4201/transfers"</code></pre>
+        </div>
+    </section>
+
+    <!-- SUPPORT -->
+    <section id="support">
+        <h2>Support &amp; Contact</h2>
+        <div class="card-grid">
+            <div class="card">
+                <h4>&#x1F4AC; Discord</h4>
+                <p>Join the Pentagon Games server for developer support and announcements.</p>
+                <p><a href="https://discord.gg/pentagongamesxp">discord.gg/pentagongamesxp</a></p>
+            </div>
+            <div class="card">
+                <h4>&#x2709;&#xFE0F; Email</h4>
+                <p>For app key requests, collection listings, and partnership inquiries.</p>
+                <p><a href="mailto:nftprof@pentagon.games">nftprof@pentagon.games</a></p>
+            </div>
+            <div class="card">
+                <h4>&#x1F4F1; Telegram</h4>
+                <p>Pentagon Games community channel.</p>
+                <p><a href="https://t.me/pentagongamesxp">t.me/pentagongamesxp</a></p>
+            </div>
+        </div>
+    </section>
+
+    <div class="footer">
+        <p>&#x2B21; Pentagon NFT Data API &mdash; Built by Pentagon Games &mdash; <a href="https://pentagon.games">pentagon.games</a></p>
+        <p style="margin-top: 8px;">
+            <a href="https://pentagon.games">Website</a> &middot;
+            <a href="https://explorer.pentagon.games">Explorer</a> &middot;
+            <a href="https://x.com/pentagongamesxp">Twitter</a> &middot;
+            <a href="https://discord.gg/pentagongamesxp">Discord</a> &middot;
+            <a href="https://www.coingecko.com/en/coins/pentagon-chain">CoinGecko</a>
+        </p>
+    </div>
+
+</div>
+
+<script>
+function switchTab(event, tabId) {
+    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+    event.target.classList.add('active');
+    document.getElementById(tabId).classList.add('active');
+}
+</script>
+
+</body>
+</html>
