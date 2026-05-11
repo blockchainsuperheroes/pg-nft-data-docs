@@ -125,6 +125,7 @@
         <a href="#chains">Chains</a>
         <a href="#collections">Collections</a>
         <a href="#architecture">Architecture</a>
+        <a href="#images">Images</a>
         <a href="#examples">Examples</a>
     </div>
 </nav>
@@ -280,20 +281,20 @@
 
         <p><strong>Response:</strong></p>
         <pre><code>{
+  "owner": "0x37224cFD71347Da6f097c94B8649f9C552f803c9",
   "total": 17,
   "page": 1,
   "limit": 50,
-  "results": [
+  "nfts": [
     {
-      "token_id": "4201",
+      "tokenId": "4201",
       "name": "BCSH #4201",
       "owner": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
-      "image": "https://assets.pentagon.games/bcsh/4201.png",
-      "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
-      "chain_id": 3344,
-      "chain_name": "Pentagon",
+      "image": "https://images.pfpvault.com/3344/0xcdad.../4201.webp",
+      "contractAddress": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
+      "chain": 3344,
       "collection": "BCSH OASYS",
-      "type": "ERC721"
+      "updatedAt": "2026-05-11T04:15:39+00:00"
     }
   ]
 }</code></pre>
@@ -311,24 +312,29 @@
 
         <p><strong>Response:</strong></p>
         <pre><code>{
-  "token_id": "4201",
-  "name": "BCSH #4201",
-  "owner": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
-  "image": "https://assets.pentagon.games/bcsh/4201.png",
   "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
-  "chain_id": 3344,
+  "tokenId": "5555000000553",
   "collection": "BCSH OASYS",
-  "type": "ERC721",
-  "metadata": [
-    {"trait_type": "Background", "value": "Blue"},
-    {"trait_type": "Rarity", "value": "Legendary"}
-  ],
+  "chain": 3344,
+  "owner": "0x6e28399aa9dd598caa49df9fa46d0ae87c0e7d57",
+  "metadata": {
+    "name": "Dark Setsuko",
+    "description": "After shattering her katana...",
+    "image": "https://images.pfpvault.com/3344/0xcdad.../5555000000553.webp",
+    "imageSource": "cached",
+    "attributes": [
+      {"trait_type": "Background", "value": "Blue"}
+    ]
+  },
   "source": {
-    "tokenUri": "https://id.peg.gg/api/metadata/4201",
-    "lastSync": "2026-05-10T23:36:30Z"
+    "tokenUri": "https://api.bcsh.xyz/metadata/5555000000553",
+    "lastSync": "2026-05-08T18:19:02+00:00"
   }
 }</code></pre>
 
+        <div class="alert alert-info">
+            <strong>Image resolution:</strong> The <code>image</code> field returns the best available source &mdash; prefers per-token CDN (<code>images.pfpvault.com</code>) over on-chain metadata (<code>arweave.net</code>). The <code>imageSource</code> field tells you which tier was used: <code>"cached"</code> (pfpvault CDN), <code>"onchain"</code> (from tokenURI), or <code>"original"</code> (fallback). This ensures upgraded NFTs (e.g. Dark Setsuko, Obelith variants) display their correct artwork.
+        </div>
         <div class="alert alert-info">
             <strong>Two-layer metadata:</strong> The <code>metadata</code> field contains cached data (fast). The <code>source.tokenUri</code> points to the authoritative on-chain metadata endpoint if you need a live fetch.
         </div>
@@ -661,6 +667,39 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
 curl -H "X-PG-App-Key: pk_live_your_key" \
   "https://nft-data.pentagon.games/api/v1/nft/0xcDAD57bFc48E8373280C6dc3039C5169353B6879/4201/transfers"</code></pre>
         </div>
+    </section>
+
+    <!-- IMAGE RESOLUTION -->
+    <section id="images">
+        <h2>Image Resolution</h2>
+        <p>The API uses a <strong>three-tier image fallback</strong> to ensure NFTs always display the best available artwork:</p>
+
+        <div class="card-grid">
+            <div class="card">
+                <h4>1. Cached CDN Image <span class="badge badge-green">Preferred</span></h4>
+                <p>Per-token rendered images from <code>images.pfpvault.com</code>. Includes correct artwork for upgraded/variant NFTs (Dark Setsuko, Obelith, etc). ~134K NFTs covered.</p>
+            </div>
+            <div class="card">
+                <h4>2. On-Chain Metadata Image</h4>
+                <p>Image URL from the token's on-chain metadata (<code>tokenURI &rarr; JSON &rarr; image</code>). May return a generic base image for collections with upgradeable metadata.</p>
+            </div>
+            <div class="card">
+                <h4>3. Original Image</h4>
+                <p>Fallback to the original image captured at first sync. Used when both cached and on-chain images are unavailable.</p>
+            </div>
+        </div>
+
+        <div class="alert alert-info">
+            <strong>Why this matters:</strong> Some collections (like BCSH OASYS / Setsuko) have upgradeable NFTs where the on-chain metadata returns a generic base image for all variants. The cached CDN layer stores the correct per-token artwork including upgraded variants.
+        </div>
+
+        <h3>Metadata Refresh <span class="badge badge-yellow">Coming Soon</span></h3>
+        <p>A queued metadata refresh system is planned for handling upgradeable NFT collections:</p>
+        <ul>
+            <li><strong>User-facing:</strong> <code>POST /api/v1/nft/refresh/:contract/:tokenId</code> &mdash; rate-limited to 1 refresh per token per user per 10 minutes, queued via RabbitMQ</li>
+            <li><strong>Admin:</strong> Full collection refresh from the admin panel with progress tracking</li>
+            <li><strong>Dedup:</strong> Images are stored by content hash &mdash; identical images across tokens share one copy</li>
+        </ul>
     </section>
 
     <!-- SUPPORT -->
