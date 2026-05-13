@@ -686,6 +686,7 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
             <div class="card">
                 <h4>2. Project-Hosted Thumbnails</h4>
                 <p>For collections that maintain their own thumbnail servers (e.g. Google Cloud Storage buckets), the cacher pulls from these fast, reliable sources instead of slow on-chain storage. Falls back here when CDN cache misses.</p>
+                <p style="margin-top:8px; font-size:13px; color: var(--muted);">Example: Killer GF on-chain metadata points to Arweave (5.9 MB PNGs, frequent timeouts). The project hosts optimized thumbnails at <code>storage.googleapis.com/kgf-thumbnails/{id}.jpg</code> &mdash; the cacher uses these instead for reliable, fast ingestion.</p>
             </div>
             <div class="card">
                 <h4>3. On-Chain Metadata Image</h4>
@@ -713,10 +714,19 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
             <strong>Why this matters:</strong> Some collections (like BCSH OASYS / Setsuko) have upgradeable NFTs where the on-chain metadata returns a generic base image for all variants. The cached CDN layer stores the correct per-token artwork including upgraded variants.
         </div>
 
+        <h3>Original Image Archival</h3>
+        <p>When the cacher downloads a source image, it stores the <strong>pre-conversion original</strong> in a separate S3 path before resizing to the CDN WebP. This gives us a full-fidelity copy that doesn't depend on external sources staying online.</p>
+        <ul>
+            <li><strong>CDN path:</strong> <code>s3://pg-nft-images/{chain}/{contract}/{token_id}.webp</code> &mdash; optimized, served via CloudFront</li>
+            <li><strong>Originals path:</strong> <code>s3://pg-nft-images/originals/{chain}/{contract}/{token_id}.{ext}</code> &mdash; full-size, not on CDN, archival only</li>
+            <li><strong>Why:</strong> External sources (Arweave, IPFS, project APIs) can go down or change. Our copy is the insurance policy.</li>
+        </ul>
+
         <h3>Image Change History <span class="badge badge-yellow">Coming Soon</span></h3>
         <p>The system will track <strong>dated snapshots</strong> of NFT images over time. When the cacher detects that a token's source image has changed (e.g. an NFT upgrade, evolution, or metadata update), it preserves the previous version with a timestamp.</p>
         <ul>
             <li><strong>Change detection:</strong> Content hash comparison on each sync &mdash; if the image bytes differ, a new snapshot is stored</li>
+            <li><strong>History path:</strong> <code>s3://pg-nft-images/history/{chain}/{contract}/{token_id}/{timestamp}.webp</code></li>
             <li><strong>History endpoint:</strong> <code>GET /api/v1/nft/:contract/:tokenId/images</code> &mdash; returns all dated captures with timestamps</li>
             <li><strong>Use cases:</strong> Track NFT evolution (e.g. Setsuko &rarr; Dark Setsuko), audit visual changes, prove historical state</li>
         </ul>
