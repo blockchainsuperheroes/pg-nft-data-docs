@@ -192,7 +192,7 @@
             </div>
             <div class="card">
                 <h4>&#x26A1; Fast &amp; Reliable</h4>
-                <p>Sub-second queries backed by a three-layer sync engine. Pentagon chain gets real-time updates.</p>
+                <p>Sub-second queries backed by a four-layer sync engine. Pentagon chain gets real-time updates.</p>
             </div>
         </div>
 
@@ -477,7 +477,7 @@
             <li><strong>Collection name</strong> and type (ERC721 or ERC1155)</li>
             <li><strong>Metadata endpoint</strong> (tokenURI or custom API), if applicable</li>
         </ul>
-        <p>Once registered, all three sync layers begin tracking your collection automatically. You'll receive an app key for API access.</p>
+        <p>Once registered, all four sync layers begin tracking your collection automatically. You'll receive an app key for API access.</p>
         <div class="alert alert-info">
             Contact: <a href="mailto:nftprof@pentagon.games">nftprof@pentagon.games</a> or <a href="https://discord.gg/pentagongamesxp">Discord</a>
         </div>
@@ -486,7 +486,7 @@
     <!-- ARCHITECTURE -->
     <section id="architecture">
         <h2>How It Works</h2>
-        <p>The NFT Data API is backed by a three-layer sync engine that guarantees ownership accuracy. Every layer cross-checks the others &mdash; if they disagree, on-chain truth wins.</p>
+        <p>The NFT Data API is backed by a four-layer sync engine that guarantees ownership accuracy. Every layer cross-checks the others &mdash; if they disagree, on-chain truth wins.</p>
 
         <div class="card-grid">
             <div class="card">
@@ -501,6 +501,10 @@
                 <h4>&#x2705; Layer 3: On-Chain Verifier</h4>
                 <p>Periodic <code>ownerOf()</code> spot checks comparing database state to on-chain ground truth. Catches edge cases like contract upgrades or admin transfers.</p>
             </div>
+            <div class="card">
+                <h4>&#x1F5BC; Layer 4: Image Cache Pipeline</h4>
+                <p>Background image processor that downloads original artwork, converts to optimized 512px WebP, and uploads to the CDN. Detects same-image collections for efficient batch processing. Serves from CloudFront edge for sub-100ms global delivery.</p>
+            </div>
         </div>
 
         <h3>Triangulation</h3>
@@ -512,7 +516,7 @@
         </ul>
 
         <div class="alert alert-success">
-            <strong>Result:</strong> Triple-verified ownership data. No stale records, no missed transfers, no silent failures.
+            <strong>Result:</strong> Triple-verified ownership data with optimized image delivery. No stale records, no missed transfers, no silent failures &mdash; and images load in milliseconds from the CDN edge.
         </div>
     </section>
 
@@ -672,22 +676,38 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
     <!-- IMAGE RESOLUTION -->
     <section id="images">
         <h2>Image Resolution</h2>
-        <p>The API uses a <strong>three-tier image fallback</strong> to ensure NFTs always display the best available artwork:</p>
+        <p>The API uses a <strong>four-tier image fallback</strong> to ensure NFTs always display the best available artwork:</p>
 
         <div class="card-grid">
             <div class="card">
                 <h4>1. Cached CDN Image <span class="badge badge-green">Preferred</span></h4>
-                <p>Per-token rendered images from <code>images.pfpvault.com</code>. Includes correct artwork for upgraded/variant NFTs (Dark Setsuko, Obelith, etc). ~134K NFTs covered.</p>
+                <p>Pre-rendered 512&times;512 WebP images served from <code>images.pfpvault.com</code> via CloudFront. Optimized to ~30&ndash;50 KB per token (vs multi-MB originals). Includes correct artwork for upgraded/variant NFTs (Dark Setsuko, Obelith, etc). 150K+ NFTs covered and growing.</p>
             </div>
             <div class="card">
-                <h4>2. On-Chain Metadata Image</h4>
-                <p>Image URL from the token's on-chain metadata (<code>tokenURI &rarr; JSON &rarr; image</code>). May return a generic base image for collections with upgradeable metadata.</p>
+                <h4>2. Project-Hosted Thumbnails</h4>
+                <p>For collections that maintain their own thumbnail servers (e.g. Google Cloud Storage buckets), the cacher pulls from these fast, reliable sources instead of slow on-chain storage. Falls back here when CDN cache misses.</p>
             </div>
             <div class="card">
-                <h4>3. Original Image</h4>
-                <p>Fallback to the original image captured at first sync. Used when both cached and on-chain images are unavailable.</p>
+                <h4>3. On-Chain Metadata Image</h4>
+                <p>Image URL from the token's on-chain metadata (<code>tokenURI &rarr; JSON &rarr; image</code>). May return a generic base image for collections with upgradeable metadata. Sources include IPFS, Arweave, and project APIs.</p>
+            </div>
+            <div class="card">
+                <h4>4. Original Image</h4>
+                <p>Fallback to the original image captured at first sync. Used when all other tiers are unavailable.</p>
             </div>
         </div>
+
+        <h3>CDN Image Spec</h3>
+        <ul>
+            <li><strong>Format:</strong> WebP, 512px max dimension, quality 80</li>
+            <li><strong>Size:</strong> ~30&ndash;50 KB average (down from 1&ndash;6 MB originals)</li>
+            <li><strong>URL pattern:</strong> <code>https://images.pfpvault.com/{chain_id}/{contract_address}/{token_id}.webp</code></li>
+            <li><strong>Caching:</strong> 1-year cache headers (<code>immutable</code>), served via CloudFront edge</li>
+        </ul>
+
+        <h3>Smart Caching</h3>
+        <p>The image cacher detects when a collection shares a single source image across all tokens (common with PFP passes and hero collections). In these cases, the image is downloaded and converted <strong>once</strong>, then server-side copied to all token slots &mdash; caching thousands of tokens in seconds rather than hours.</p>
+        <p>For collections with variant artwork (e.g. BCSH OASYS with Setsuko, Dark Setsuko, and Obelith Setsuko), the cacher groups tokens by source image and handles each variant independently.</p>
 
         <div class="alert alert-info">
             <strong>Why this matters:</strong> Some collections (like BCSH OASYS / Setsuko) have upgradeable NFTs where the on-chain metadata returns a generic base image for all variants. The cached CDN layer stores the correct per-token artwork including upgraded variants.
