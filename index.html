@@ -713,6 +713,14 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
             <strong>Why this matters:</strong> Some collections (like BCSH OASYS / Setsuko) have upgradeable NFTs where the on-chain metadata returns a generic base image for all variants. The cached CDN layer stores the correct per-token artwork including upgraded variants.
         </div>
 
+        <h3>Image Change History <span class="badge badge-yellow">Coming Soon</span></h3>
+        <p>The system will track <strong>dated snapshots</strong> of NFT images over time. When the cacher detects that a token's source image has changed (e.g. an NFT upgrade, evolution, or metadata update), it preserves the previous version with a timestamp.</p>
+        <ul>
+            <li><strong>Change detection:</strong> Content hash comparison on each sync &mdash; if the image bytes differ, a new snapshot is stored</li>
+            <li><strong>History endpoint:</strong> <code>GET /api/v1/nft/:contract/:tokenId/images</code> &mdash; returns all dated captures with timestamps</li>
+            <li><strong>Use cases:</strong> Track NFT evolution (e.g. Setsuko &rarr; Dark Setsuko), audit visual changes, prove historical state</li>
+        </ul>
+
         <h3>Metadata Refresh <span class="badge badge-yellow">Coming Soon</span></h3>
         <p>A queued metadata refresh system is planned for handling upgradeable NFT collections:</p>
         <ul>
