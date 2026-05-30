@@ -259,6 +259,16 @@
                 <td class="endpoint">/api/v1/nft/:contract/:tokenId/transfers</td>
                 <td>Transfer history for an NFT</td>
             </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/nft/owner/:address/chains</td>
+                <td>Lightweight per-chain NFT count summary</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span> <span class="method method-post">POST</span></td>
+                <td class="endpoint">/api/v1/nft/owners</td>
+                <td>Multi-address merged NFT lookup (max 10)</td>
+            </tr>
         </table>
 
         <!-- Owner Lookup -->
@@ -272,6 +282,7 @@
             <tr><td><code>chain_id</code></td><td>query</td><td>No</td><td>Filter by chain ID (e.g., <code>3344</code> for Pentagon)</td></tr>
             <tr><td><code>contract</code></td><td>query</td><td>No</td><td>Filter by contract address</td></tr>
             <tr><td><code>collection</code></td><td>query</td><td>No</td><td>Filter by collection name</td></tr>
+            <tr><td><code>group_by</code></td><td>query</td><td>No</td><td>Set to <code>chain</code> to group results by chain ID</td></tr>
             <tr><td><code>page</code></td><td>query</td><td>No</td><td>Page number (default: 1)</td></tr>
             <tr><td><code>limit</code></td><td>query</td><td>No</td><td>Results per page (default: 50, max: 200)</td></tr>
         </table>
@@ -296,6 +307,14 @@
       "collection": "BCSH OASYS",
       "updatedAt": "2026-05-11T04:15:39+00:00"
     }
+  ]
+}</code></pre>
+
+        <p><strong>With <code>?group_by=chain</code>:</strong></p>
+        <pre><code>{
+  "chains": [
+    {"chainId": 1, "count": 610, "nfts": [...]},
+    {"chainId": 3344, "count": 1, "nfts": [...]}
   ]
 }</code></pre>
 
@@ -337,6 +356,60 @@
         </div>
         <div class="alert alert-info">
             <strong>Two-layer metadata:</strong> The <code>metadata</code> field contains cached data (fast). The <code>source.tokenUri</code> points to the authoritative on-chain metadata endpoint if you need a live fetch.
+        </div>
+
+        <!-- Chain Summary -->
+        <h3 id="ep-chains">Chain Summary for Owner</h3>
+        <pre><code>GET /api/v1/nft/owner/:address/chains</code></pre>
+        <p>Returns a lightweight breakdown of how many NFTs a wallet holds on each chain, without fetching full NFT data. Useful for building chain selectors or quick portfolio overviews.</p>
+
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>address</code></td><td>path</td><td>Yes</td><td>Ethereum-style wallet address (0x...)</td></tr>
+        </table>
+
+        <p><strong>Example request:</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/nft/owner/0x37224cFD71347Da6f097c94B8649f9C552f803c9/chains"</code></pre>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "total": 611,
+  "chains": [
+    {"chainId": 1, "count": 610},
+    {"chainId": 3344, "count": 1}
+  ]
+}</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Use case:</strong> Call <code>/chains</code> first to discover which chains a user has NFTs on, then fetch per-chain with <code>?chain_id=3344</code> on the owner endpoint. This avoids loading all NFTs across all chains upfront.
+        </div>
+
+        <!-- Multi-Address Lookup -->
+        <h3 id="ep-owners">Multi-Address Lookup</h3>
+        <pre><code>GET /api/v1/nft/owners?addresses=0xABC,0xDEF
+POST /api/v1/nft/owners</code></pre>
+        <p>Merges NFTs from multiple wallet addresses into a single response (max 10 addresses). Supports all the same filters as the single-address endpoint (<code>chain_id</code>, <code>collection</code>, <code>contract</code>, <code>group_by</code>).</p>
+
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>addresses</code></td><td>query (GET) or body (POST)</td><td>Yes</td><td>Comma-separated addresses (GET) or JSON array (POST). Max 10.</td></tr>
+            <tr><td><code>chain_id</code></td><td>query</td><td>No</td><td>Filter by chain ID</td></tr>
+            <tr><td><code>collection</code></td><td>query</td><td>No</td><td>Filter by collection name</td></tr>
+            <tr><td><code>contract</code></td><td>query</td><td>No</td><td>Filter by contract address</td></tr>
+            <tr><td><code>group_by</code></td><td>query</td><td>No</td><td>Set to <code>chain</code> for per-chain grouping</td></tr>
+        </table>
+
+        <p><strong>GET example:</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/nft/owners?addresses=0xABC...,0xDEF...&chain_id=3344"</code></pre>
+
+        <p><strong>POST example:</strong></p>
+        <pre><code>curl -X POST "https://nft-data.pentagon.games/api/v1/nft/owners" \
+  -H "Content-Type: application/json" \
+  -H "X-PG-App-Key: pk_live_your_key" \
+  -d '{"addresses": ["0xABC...", "0xDEF..."]}'</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Migration from old API:</strong> If you previously used <code>api.account.pentagon.games/user/nfts</code> which auto-resolved linked wallets via user auth, you can now get the same result by fetching the user's linked addresses from the Pentagon Identity API, then passing them all to <code>/api/v1/nft/owners</code>. Same response format as the single-address endpoint.
         </div>
 
         <!-- Collections List -->
