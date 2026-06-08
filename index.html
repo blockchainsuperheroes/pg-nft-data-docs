@@ -126,6 +126,7 @@
         <a href="#collections">Collections</a>
         <a href="#architecture">Architecture</a>
         <a href="#images">Images</a>
+        <a href="#metadata">Metadata &amp; Licensing</a>
         <a href="#examples">Examples</a>
     </div>
 </nav>
@@ -336,6 +337,8 @@
   "collection": "BCSH OASYS",
   "chain": 3344,
   "owner": "0x6e28399aa9dd598caa49df9fa46d0ae87c0e7d57",
+  "transferable": true,
+  "standard": "ERC721",
   "metadata": {
     "name": "Dark Setsuko",
     "description": "After shattering her katana...",
@@ -345,6 +348,30 @@
       {"trait_type": "Background", "value": "Blue"}
     ]
   },
+  "license": {
+    "schema": "erc721l-metadata-v1",
+    "rights_model": "base-plus-upgrade",
+    "current_tier": 4,
+    "current_name": "COMMERCIAL_DERIVS_NONEXCLUSIVE",
+    "base_tier": 2,
+    "upgraded_tier": 4,
+    "terms_uri": "https://nft-data.pentagon.games/licenses/tier-4",
+    "source": "override"
+  },
+  "storage": {
+    "image": {
+      "tier": "cached",
+      "provider": "s3+cloudfront",
+      "permanence": "managed",
+      "url": "https://images.pfpvault.com/3344/0xcdad.../5555000000553.webp",
+      "archivalOriginal": "s3://pg-nft-images/originals/3344/0xcdad.../5555000000553.png"
+    },
+    "metadata": {
+      "tier": "override",
+      "provider": "pg_nft_db",
+      "tokenUri": "https://api.bcsh.xyz/metadata/5555000000553"
+    }
+  },
   "source": {
     "tokenUri": "https://api.bcsh.xyz/metadata/5555000000553",
     "lastSync": "2026-05-08T18:19:02+00:00"
@@ -352,10 +379,13 @@
 }</code></pre>
 
         <div class="alert alert-info">
+            <strong>Top-level fields:</strong> <code>transferable</code> (SBT flag &mdash; <code>false</code> means soulbound/locked), <code>standard</code> (<code>ERC721</code> or <code>ERC1155</code>), <code>license</code> (ERC-721L rights tier, see <a href="#metadata">Metadata &amp; Licensing</a>), and <code>storage</code> (where the image and metadata physically live and how permanent they are). These are promoted to the top level for integrators; <code>transferable</code> and licensing values also remain mirrored inside <code>metadata.attributes</code> for backward compatibility.
+        </div>
+        <div class="alert alert-info">
             <strong>Image resolution:</strong> The <code>image</code> field returns the best available source &mdash; prefers per-token CDN (<code>images.pfpvault.com</code>) over on-chain metadata (<code>arweave.net</code>). The <code>imageSource</code> field tells you which tier was used: <code>"cached"</code> (pfpvault CDN), <code>"onchain"</code> (from tokenURI), or <code>"original"</code> (fallback). This ensures upgraded NFTs (e.g. Dark Setsuko, Obelith variants) display their correct artwork.
         </div>
         <div class="alert alert-info">
-            <strong>Two-layer metadata:</strong> The <code>metadata</code> field contains cached data (fast). The <code>source.tokenUri</code> points to the authoritative on-chain metadata endpoint if you need a live fetch.
+            <strong>Two-layer metadata:</strong> The <code>metadata</code> field contains the override we serve (fast, normalized). The <code>source.tokenUri</code> points to the underlying on-chain / project metadata endpoint if you need a live fetch. See <a href="#metadata">Metadata &amp; Licensing</a> for how the override layer works.
         </div>
 
         <!-- Chain Summary -->
@@ -811,6 +841,102 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
             <li><strong>Admin:</strong> Full collection refresh from the admin panel with progress tracking</li>
             <li><strong>Dedup:</strong> Images are stored by content hash &mdash; identical images across tokens share one copy</li>
         </ul>
+    </section>
+
+    <!-- METADATA & LICENSING -->
+    <section id="metadata">
+        <h2>Metadata &amp; Licensing</h2>
+
+        <div class="alert alert-info">
+            <strong>TL;DR:</strong> Every NFT we serve carries a normalized <strong>metadata override</strong> built by our resolver, not just whatever the contract returns. On top of that we expose three top-level fields integrators care about: <code>transferable</code> (SBT vs tradable), <code>license</code> (machine-readable rights tier per the <strong>ERC-721L</strong> standard), and <code>storage</code> (where the image and metadata actually live and how permanent they are).
+        </div>
+
+        <h3>The Metadata Override Layer</h3>
+        <p>For every collection we support, the API returns a <strong>metadata override</strong> &mdash; a normalized metadata object that we build and serve, regardless of what the underlying contract exposes. This mirrors the four-tier image system: the contract's <code>tokenURI</code> is one possible input, but it is not the source of truth our API hands back.</p>
+        <p>This matters because many collections (Gunnies PFP included) never wired working on-chain metadata &mdash; their <code>tokenURI</code> is empty or returns a generic base record. The override layer fills that gap with consistent, indexer-friendly fields across all 49 collections.</p>
+        <table>
+            <tr><th>Layer</th><th>Source</th><th>When used</th></tr>
+            <tr><td>1. Override (primary)</td><td>Our resolver + <code>pg_nft_db</code></td><td>Always returned in <code>metadata</code>. Normalized, fast, cached.</td></tr>
+            <tr><td>2. Project / on-chain</td><td>Contract <code>tokenURI</code> or project API</td><td>Surfaced under <code>source.tokenUri</code> for live verification when the contract exposes one.</td></tr>
+        </table>
+        <div class="alert alert-info">
+            <strong>Why an override and not just <code>tokenURI</code>:</strong> it lets us serve correct, current metadata for upgradeable NFTs, collections with broken or missing on-chain metadata, and game NFTs whose state changes off-chain &mdash; all through one consistent API shape.
+        </div>
+
+        <h3>Transferable (SBT) Flag</h3>
+        <p>The top-level <code>transferable</code> boolean tells you whether a token is freely tradable (<code>true</code>) or soulbound/locked (<code>false</code>). It is promoted out of the trait list for easy filtering, and also kept inside <code>metadata.attributes</code> as a <code>Transferable</code> trait for backward compatibility.</p>
+        <pre><code>"transferable": false   // soulbound / locked
+"transferable": true    // freely tradable</code></pre>
+        <p>For collections using a tiered-transfer model (e.g. Gunnies PFP: locked by default, unlockable per token), this flag reflects each token's current state.</p>
+
+        <h3>Licensing (ERC-721L)</h3>
+        <p>The <code>license</code> object exposes machine-readable usage rights following the <strong>ERC-721L</strong> licensing-aware NFT standard. It lets wallets, marketplaces, games, and AI agents reliably understand what a holder is permitted to do with the content &mdash; commercial use, derivatives, exclusivity, and so on.</p>
+        <pre><code>"license": {
+  "schema": "erc721l-metadata-v1",
+  "rights_model": "base-plus-upgrade",
+  "current_tier": 4,
+  "current_name": "COMMERCIAL_DERIVS_NONEXCLUSIVE",
+  "base_tier": 2,
+  "upgraded_tier": 4,
+  "terms_uri": "https://nft-data.pentagon.games/licenses/tier-4",
+  "source": "override"
+}</code></pre>
+        <table>
+            <tr><th>Field</th><th>Meaning</th></tr>
+            <tr><td><code>current_tier</code> / <code>current_name</code></td><td>The effective rights tier for the token's current state (uint8 + canonical name).</td></tr>
+            <tr><td><code>rights_model</code></td><td><code>single-tier</code>, <code>base-plus-upgrade</code>, <code>dynamic-tier</code>, or <code>metadata-only</code>.</td></tr>
+            <tr><td><code>base_tier</code> / <code>upgraded_tier</code></td><td>For tiered-transfer collections: rights in the locked vs unlocked state. Rights never decrease on upgrade (<code>upgraded_tier &gt;= base_tier</code>).</td></tr>
+            <tr><td><code>terms_uri</code></td><td>Canonical human-readable license terms for the tier.</td></tr>
+            <tr><td><code>source</code></td><td><code>onchain</code> if the contract implements ERC-721L (EIP-165 detected, on-chain getters win); <code>override</code> if served from our resolver mirror.</td></tr>
+        </table>
+
+        <h4>Canonical Tier Ladder (0&ndash;7)</h4>
+        <table>
+            <tr><th>Tier</th><th>Name</th><th>Rights</th></tr>
+            <tr><td>0</td><td>UNSET / UNKNOWN</td><td>No rights declared &mdash; treat as no permission.</td></tr>
+            <tr><td>1</td><td>PERSONAL_USE</td><td>Personal display / identity use only. No commercial, no derivatives.</td></tr>
+            <tr><td>2</td><td>COMMERCIAL_NO_DERIVS</td><td>Commercial use of the unmodified artwork. No derivatives/remixes.</td></tr>
+            <tr><td>3</td><td>NONCOMMERCIAL_DERIVS</td><td>Derivatives allowed for non-commercial purposes only.</td></tr>
+            <tr><td>4</td><td>COMMERCIAL_DERIVS_NONEXCLUSIVE</td><td>Commercial derivatives allowed; non-exclusive grant.</td></tr>
+            <tr><td>5</td><td>COMMERCIAL_DERIVS_EXCLUSIVE</td><td>Exclusive commercial derivatives rights.</td></tr>
+            <tr><td>6</td><td>COMMERCIAL_DERIVS_SHAREALIKE</td><td>Commercial derivatives; downstream works must stay share-alike.</td></tr>
+            <tr><td>7</td><td>CC0</td><td>Public domain / unrestricted use.</td></tr>
+        </table>
+
+        <div class="alert alert-info">
+            <strong>Example &mdash; Gunnies PFP (tiered transfer + ERC-721L):</strong> A locked/soulbound Gunnie is <strong>tier 2 (COMMERCIAL_NO_DERIVS)</strong> &mdash; the holder may use the exact artwork commercially but may not make derivatives. Once unlocked into a transferable NFT it becomes <strong>tier 4 (COMMERCIAL_DERIVS_NONEXCLUSIVE)</strong> &mdash; the holder may create and commercially exploit derivatives. Both states permit commercial use under their respective conditions, satisfying the standard's rule that transferable rights are never lower than locked rights.
+        </div>
+
+        <h4>For AI Agents</h4>
+        <p>Treat the license tier as a permission boundary. Before generating, publishing, selling, or remixing content derived from an NFT, read <code>license.current_tier</code> and verify the action is allowed: display is fine for tiers 1&ndash;7, commercial use of unmodified art for tiers 2/4/5/6/7, derivatives for tiers 3&ndash;7 (commercial only for 4&ndash;7). If an action isn't permitted, refuse and surface the minimum tier required.</p>
+
+        <h3>Storage</h3>
+        <p>The <code>storage</code> field tells integrators not just <em>what</em> the image and metadata are, but <em>where they live</em> and <em>how permanent</em> they are &mdash; so you can reason about reliability and durability.</p>
+        <pre><code>"storage": {
+  "image": {
+    "tier": "cached",            // cached | project | onchain | original
+    "provider": "s3+cloudfront", // s3+cloudfront | gcs | arweave | ipfs | external
+    "permanence": "managed",     // managed | arweave | ipfs | external
+    "url": "https://images.pfpvault.com/3344/0xcdad.../5555000000553.webp",
+    "archivalOriginal": "s3://pg-nft-images/originals/3344/0xcdad.../5555000000553.png"
+  },
+  "metadata": {
+    "tier": "override",          // override | onchain-tokenuri | project-api
+    "provider": "pg_nft_db",
+    "tokenUri": "https://api.bcsh.xyz/metadata/5555000000553"
+  }
+}</code></pre>
+        <table>
+            <tr><th>Field</th><th>Meaning</th></tr>
+            <tr><td><code>image.tier</code></td><td>Which of the four image fallback tiers served this token (see <a href="#images">Image Resolution</a>).</td></tr>
+            <tr><td><code>image.provider</code></td><td>Underlying storage backend the image was served from.</td></tr>
+            <tr><td><code>image.permanence</code></td><td><code>managed</code> (our S3/CDN, we control uptime), <code>arweave</code>/<code>ipfs</code> (decentralized permanent), or <code>external</code> (a third-party source that could change or disappear).</td></tr>
+            <tr><td><code>image.archivalOriginal</code></td><td>Our full-fidelity pre-conversion copy in S3 &mdash; insurance against external sources going offline.</td></tr>
+            <tr><td><code>metadata.tier</code></td><td>Where the served metadata came from: our <code>override</code>, the contract <code>tokenUri</code>, or a <code>project-api</code>.</td></tr>
+        </table>
+        <div class="alert alert-info">
+            <strong>Why this matters:</strong> an integrator can decide whether to trust an image URL long-term. <code>managed</code> and <code>arweave</code> are safe to hotlink; <code>external</code> should be re-fetched or cached locally because the source may vanish. For any token where the external source dies, our <code>archivalOriginal</code> keeps a recoverable copy.
+        </div>
     </section>
 
     <!-- SUPPORT -->
