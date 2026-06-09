@@ -127,6 +127,7 @@
         <a href="#architecture">Architecture</a>
         <a href="#images">Images</a>
         <a href="#metadata">Metadata &amp; Licensing</a>
+        <a href="#mutable">Mutable NFTs &amp; Refresh</a>
         <a href="#examples">Examples</a>
     </div>
 </nav>
@@ -936,6 +937,71 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
         </table>
         <div class="alert alert-info">
             <strong>Why this matters:</strong> an integrator can decide whether to trust an image URL long-term. <code>managed</code> and <code>arweave</code> are safe to hotlink; <code>external</code> should be re-fetched or cached locally because the source may vanish. For any token where the external source dies, our <code>archivalOriginal</code> keeps a recoverable copy.
+        </div>
+    </section>
+
+    <!-- MUTABLE NFTS & REFRESH PATTERNS -->
+    <section id="mutable">
+        <h2>Mutable NFTs &amp; Refresh Patterns</h2>
+
+        <div class="alert alert-info">
+            <strong>TL;DR:</strong> Most NFTs are static after mint &mdash; their metadata never changes, so we index once and serve forever. A few collections are <strong>mutable post-mint</strong>: a token's traits, image, transferable/SBT state, or license tier can change <em>without the token ever being transferred</em>. Our <code>Transfer</code>-driven sync is blind to those changes by design, so mutable collections need an explicit <strong>refresh trigger</strong>. This section defines the two mutation types and how each is kept current.
+        </div>
+
+        <h3>Why Transfer-Based Sync Isn't Enough</h3>
+        <p>The core sync engine (see <a href="#architecture">How It Works</a>) keys off ownership change &mdash; it reacts to <code>Transfer</code> events and re-checks <code>ownerOf()</code>. That is the right model for ownership, but a post-mint upgrade changes a token's <em>state</em>, not its <em>owner</em>. No transfer fires, so nothing re-indexes, and the cached metadata captured at first ingest goes stale. The fix is a separate refresh path, triggered by something other than a transfer.</p>
+
+        <h3>The Two Mutation Types</h3>
+        <table>
+            <tr><th></th><th>Type A &mdash; On-Chain State Change</th><th>Type B &mdash; Backend-Only Change</th></tr>
+            <tr><td><strong>Example</strong></td><td>Gunnies PFP upgrade (SBT &rarr; transferable NFT)</td><td>Setsuko / BCSH OASYS variant upgrade (base &rarr; Dark / Obelith)</td></tr>
+            <tr><td><strong>What changes</strong></td><td>An on-chain flag flips (e.g. <code>isUpgraded(tokenId)</code> becomes true). Owner unchanged.</td><td>The project's own metadata API starts returning a new image / traits. Nothing changes on-chain.</td></tr>
+            <tr><td><strong>Where truth lives</strong></td><td>On-chain, via a project-provided read function (selector).</td><td>The project's metadata endpoint only.</td></tr>
+            <tr><td><strong>How we verify</strong></td><td>We call the read function ourselves and trust the chain. A callback is only a <em>hint</em> to re-check.</td><td>No on-chain verification possible. We re-pull the project endpoint and overwrite our cache.</td></tr>
+            <tr><td><strong>Trigger options</strong></td><td>Callback (verified) <em>or</em> an approved tx-scanning cron backstop.</td><td>Callback only &mdash; there is nothing on-chain to watch or scan.</td></tr>
+        </table>
+
+        <h3>Refresh Triggers</h3>
+
+        <h4>1. Project Callback (preferred)</h4>
+        <p>After a qualifying action completes (an upgrade tx confirms, or a backend upgrade finalizes), the project's frontend or backend notifies us with just the contract and token id. We enqueue the refresh (RabbitMQ) and run the appropriate recipe for that collection. This is a push model &mdash; no polling, and no guessing which token changed, because the project tells us.</p>
+        <pre><code># Type A &mdash; on-chain upgrade (we re-verify on-chain before writing)
+POST /api/v1/nft/notify_upgrade
+Authorization: project app key (scoped to the collection)
+{ "contract": "0x7a8a3236...3Ebc", "tokenId": "550", "chainId": 3344 }
+
+# Type B &mdash; backend-only upgrade (we re-pull the project metadata endpoint)
+POST /api/v1/nft/notify_refresh
+Authorization: project app key (scoped to the collection)
+{ "contract": "0x10d2d273...9a01", "tokenId": "232", "chainId": 3344 }</code></pre>
+        <table>
+            <tr><th>Rule</th><th>Type A</th><th>Type B</th></tr>
+            <tr><td>Authentication</td><td>Required (project app key)</td><td>Required (project app key)</td></tr>
+            <tr><td>Scope</td><td>Key may only refresh its own collection</td><td>Key may only refresh its own collection</td></tr>
+            <tr><td>Trust model</td><td>Callback is a hint; <strong>on-chain read is authoritative</strong></td><td>Trust-based; project endpoint is the only source</td></tr>
+            <tr><td>Rate limit</td><td>Queued, deduped per (token, 10 min)</td><td>Queued, deduped per (token, 10 min)</td></tr>
+        </table>
+
+        <h4>2. Tx-Scanning Cron (Type A backstop)</h4>
+        <p>For Type A collections, an upgrade is a real on-chain write even when it emits <strong>no event</strong> (the call simply flips a storage flag). A project-specific cron scans the upgrade contract's transactions (not just <code>Transfer</code> logs), decodes the affected token id from calldata, and re-runs the on-chain read. This guarantees we catch upgrades even if a callback is never sent. Because it requires project-specific decoding logic and a read selector, each Type A collection submits its recipe for review and, once <strong>approved</strong>, gets a registered cron under a project-specific directory. Type B has no cron &mdash; there is nothing on-chain to scan.</p>
+
+        <h4>3. User-Initiated Refresh</h4>
+        <p>A best-effort, rate-limited self-serve path (<code>POST /api/v1/nft/refresh/:contract/:tokenId</code>, 1 per token per user per 10 min) lets a holder force a re-check from a project UI. It runs the same recipe as the callback. Useful as a fallback, but the project callback is preferred because it fires automatically at the exact moment state changes.</p>
+
+        <h3>Refresh Recipe</h3>
+        <p>Each mutable collection is described by a small recipe that the refresh worker reads to know <em>how</em> to re-derive state:</p>
+        <pre><code>{
+  "collection": "Gunnies PFP",
+  "mutable": true,
+  "type": "A",                       // A = on-chain read, B = project-api pull
+  "refresh_source": "web3",          // web3 | project_api
+  "read_fn": "isUpgraded(uint256)",  // Type A: on-chain read function
+  "selector": "0x82f11a1a",          // Type A: function selector
+  "maps_to_trait": "Transferable",   // how the read result is stored
+  "api_url_template": null           // Type B: ".../{collection}/{id}"
+}</code></pre>
+        <div class="alert alert-info">
+            <strong>Integrator takeaway:</strong> if you build on a mutable collection (Gunnies PFP, Setsuko/BCSH OASYS), read state from this API rather than caching it yourself, and call the appropriate <code>notify_*</code> endpoint right after your upgrade completes so our copy &mdash; and everything downstream (marketplaces, mining, games) &mdash; reflects the new state immediately.
         </div>
     </section>
 
