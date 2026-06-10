@@ -480,14 +480,27 @@ POST /api/v1/nft/owners</code></pre>
     {
       "name": "Azuki",
       "logo": "azuki.png",
+      "logoIsFallback": false,
       "contractAddress": "0xed5af388653567af2f388e6224dc7c4b3241c544",
       "chain": 1,
       "standard": "ERC721",
       "count": 10000
+    },
+    {
+      "name": "MoonCats",
+      "logo": "https://images.pfpvault.com/1/0xc3f7.../<token>.webp",
+      "logoIsFallback": true,
+      "contractAddress": "0xc3f733ca98e0dad0386979eb96fb1722a1a05e69",
+      "chain": 1,
+      "standard": "ERC721",
+      "count": 20921
     }
   ]
 }</code></pre>
-        <p>Fields: <code>name</code> (display name), <code>logo</code> (collection logo filename, or <code>null</code> if none set), <code>contractAddress</code>, <code>chain</code> (chain ID), <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> / etc), and <code>count</code> (indexed token count). Results are ordered by <code>count</code> descending.</p>
+        <p>Fields: <code>name</code> (display name), <code>logo</code>, <code>logoIsFallback</code>, <code>contractAddress</code>, <code>chain</code> (chain ID), <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> / etc), and <code>count</code> (indexed token count). Results are ordered by <code>count</code> descending.</p>
+        <div class="alert alert-info">
+            <strong>Logo fallback:</strong> when a collection has a curated logo it's returned as a filename (e.g. <code>azuki.png</code>) and <code>logoIsFallback</code> is <code>false</code>. When no curated logo exists, <code>logo</code> falls back to the first token's image (a full CDN/Arweave URL) and <code>logoIsFallback</code> is <code>true</code>, so the field is never <code>null</code> for a non-empty collection. Only empty collections (<code>count: 0</code>, not yet synced) can return <code>logo: null</code>.
+        </div>
 
         <!-- Collection Stats -->
         <h3 id="ep-stats">Collection Stats</h3>
