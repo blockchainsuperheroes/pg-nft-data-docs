@@ -303,14 +303,30 @@
       "tokenId": "4201",
       "name": "BCSH #4201",
       "owner": "0x37224cfd71347da6f097c94b8649f9c552f803c9",
-      "image": "https://images.pfpvault.com/3344/0xcdad.../4201.webp",
+      "collection": "BCSH OASYS",
       "contractAddress": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
       "chain": 3344,
-      "collection": "BCSH OASYS",
+      "standard": "ERC721",
+      "image": "https://images.pfpvault.com/3344/0xcdad.../4201.webp",
+      "fileType": "image",
+      "mediaType": "image",
+      "desc": "After shattering her katana...",
+      "transferable": true,
       "updatedAt": "2026-05-11T04:15:39+00:00"
     }
   ]
 }</code></pre>
+
+        <div class="alert alert-info">
+            <strong>Owner-list item fields:</strong> each <code>nfts[]</code> entry now carries the fields a wallet needs to render and gate actions without a second call per token:
+            <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> &mdash; gate transfer/listing UI),
+            <code>fileType</code> (alias <code>mediaType</code>: <code>image</code>, or <code>none</code> when unknown &mdash; so clients can decide how to render),
+            <code>transferable</code> (<code>true</code> = freely tradable, <code>false</code> = soulbound/locked; always present, defaults to <code>false</code>),
+            and <code>desc</code> (short description). For the full attribute list, license tier, and storage info, call the single-token endpoint below.
+        </div>
+        <div class="alert alert-info">
+            <strong>Animated &amp; 3D media:</strong> <code>fileType</code>/<code>mediaType</code> currently resolves to <code>image</code> for still artwork. A dedicated <code>animation_url</code> field for video / glTF / 3D assets (e.g. Gemry) is on the sync roadmap and will appear on both the owner-list and single-token endpoints once the ingestion pipeline stores it. Until then, clients should treat a missing <code>animation_url</code> as "still image only".
+        </div>
 
         <p><strong>With <code>?group_by=chain</code>:</strong></p>
         <pre><code>{
@@ -446,24 +462,32 @@ POST /api/v1/nft/owners</code></pre>
         <!-- Collections List -->
         <h3 id="ep-collections">List Tracked Collections</h3>
         <pre><code>GET /api/v1/collections</code></pre>
-        <p>Returns all actively tracked NFT collections with contract addresses, chain info, and sync status.</p>
+        <p>Returns the tracked NFT collections with contract address, chain, token standard, indexed token count, and a display logo. Useful for building collection-filter UIs.</p>
+
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>chain</code></td><td>query</td><td>No</td><td>Filter by chain ID (alias <code>chain_id</code>), e.g. <code>3344</code> for Pentagon</td></tr>
+            <tr><td><code>active</code></td><td>query</td><td>No</td><td><code>true</code> (default), <code>false</code>, or <code>all</code></td></tr>
+        </table>
+
+        <p><strong>Example request:</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/collections?chain=1"</code></pre>
 
         <p><strong>Response:</strong></p>
         <pre><code>{
-  "total": 49,
+  "count": 80,
   "collections": [
     {
-      "name": "BCSH OASYS",
-      "contract": "0xcDAD57bFc48E8373280C6dc3039C5169353B6879",
-      "chain_id": 3344,
-      "chain_name": "Pentagon",
-      "type": "ERC721",
-      "sync_status": "healthy",
-      "total_supply": 10000,
-      "last_synced": "2026-05-10T23:00:00Z"
+      "name": "Azuki",
+      "logo": "azuki.png",
+      "contractAddress": "0xed5af388653567af2f388e6224dc7c4b3241c544",
+      "chain": 1,
+      "standard": "ERC721",
+      "count": 10000
     }
   ]
 }</code></pre>
+        <p>Fields: <code>name</code> (display name), <code>logo</code> (collection logo filename, or <code>null</code> if none set), <code>contractAddress</code>, <code>chain</code> (chain ID), <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> / etc), and <code>count</code> (indexed token count). Results are ordered by <code>count</code> descending.</p>
 
         <!-- Collection Stats -->
         <h3 id="ep-stats">Collection Stats</h3>
