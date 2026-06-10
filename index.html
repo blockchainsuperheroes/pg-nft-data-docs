@@ -320,12 +320,15 @@
         <div class="alert alert-info">
             <strong>Owner-list item fields:</strong> each <code>nfts[]</code> entry now carries the fields a wallet needs to render and gate actions without a second call per token:
             <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> &mdash; gate transfer/listing UI),
-            <code>fileType</code> (alias <code>mediaType</code>: <code>image</code>, or <code>none</code> when unknown &mdash; so clients can decide how to render),
+            <code>fileType</code> (alias <code>mediaType</code>) &mdash; a normalized media type, currently always <code>image</code> for any token with a renderable image (see note below),
             <code>transferable</code> (<code>true</code> = freely tradable, <code>false</code> = soulbound/locked; always present, defaults to <code>false</code>),
             and <code>desc</code> (short description). For the full attribute list, license tier, and storage info, call the single-token endpoint below.
         </div>
         <div class="alert alert-info">
-            <strong>Animated &amp; 3D media:</strong> <code>fileType</code>/<code>mediaType</code> currently resolves to <code>image</code> for still artwork. A dedicated <code>animation_url</code> field for video / glTF / 3D assets (e.g. Gemry) is on the sync roadmap and will appear on both the owner-list and single-token endpoints once the ingestion pipeline stores it. Until then, clients should treat a missing <code>animation_url</code> as "still image only".
+            <strong><code>fileType</code> / <code>mediaType</code> values:</strong> the API returns a normalized value so clients have one rule. Today the only value returned is <code>image</code> (for any token that has a renderable image), or <code>null</code> in the rare case a token has no image at all. The underlying sync stores an unnormalized <code>none</code> for tokens it didn't explicitly classify (e.g. some PEGNAMES SVGs, Gemry, EtherFantasy stills) &mdash; the API collapses that to <code>image</code> because the <code>image</code> URL still renders as a still. <strong>Treatment:</strong> always render the <code>image</code> URL; there is no current case where <code>image</code> should not be shown.
+        </div>
+        <div class="alert alert-info">
+            <strong>Animated &amp; 3D media (roadmap):</strong> a dedicated <code>animation_url</code> field for video / glTF / 3D assets (e.g. Gemry animations) is on the sync roadmap and will appear on both the owner-list and single-token endpoints once the ingestion pipeline stores it (it has no column in the DB today). When that lands, <code>fileType</code>/<code>mediaType</code> will start returning values like <code>video</code> or <code>gltf</code>. Until then, treat a missing <code>animation_url</code> as "still image only."
         </div>
 
         <p><strong>With <code>?group_by=chain</code>:</strong></p>
@@ -475,31 +478,33 @@ POST /api/v1/nft/owners</code></pre>
 
         <p><strong>Response:</strong></p>
         <pre><code>{
-  "count": 80,
+  "count": 82,
   "collections": [
-    {
-      "name": "Azuki",
-      "logo": "azuki.png",
-      "logoIsFallback": false,
-      "contractAddress": "0xed5af388653567af2f388e6224dc7c4b3241c544",
-      "chain": 1,
-      "standard": "ERC721",
-      "count": 10000
-    },
     {
       "name": "MoonCats",
       "logo": "https://images.pfpvault.com/1/0xc3f7.../<token>.webp",
       "logoIsFallback": true,
+      "logoFilename": null,
       "contractAddress": "0xc3f733ca98e0dad0386979eb96fb1722a1a05e69",
       "chain": 1,
       "standard": "ERC721",
       "count": 20921
+    },
+    {
+      "name": "Gunnies",
+      "logo": "https://pentagon.games/images/gunnies-logo.png",
+      "logoIsFallback": false,
+      "logoFilename": "https://pentagon.games/images/gunnies-logo.png",
+      "contractAddress": "0x...",
+      "chain": 3344,
+      "standard": "ERC721",
+      "count": 9093
     }
   ]
 }</code></pre>
-        <p>Fields: <code>name</code> (display name), <code>logo</code>, <code>logoIsFallback</code>, <code>contractAddress</code>, <code>chain</code> (chain ID), <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> / etc), and <code>count</code> (indexed token count). Results are ordered by <code>count</code> descending.</p>
+        <p>Fields: <code>name</code> (display name), <code>logo</code>, <code>logoIsFallback</code>, <code>logoFilename</code>, <code>contractAddress</code>, <code>chain</code> (chain ID), <code>standard</code> (<code>ERC721</code> / <code>ERC1155</code> / etc), and <code>count</code> (indexed token count). Results are ordered by <code>count</code> descending.</p>
         <div class="alert alert-info">
-            <strong>Logo fallback:</strong> when a collection has a curated logo it's returned as a filename (e.g. <code>azuki.png</code>) and <code>logoIsFallback</code> is <code>false</code>. When no curated logo exists, <code>logo</code> falls back to the first token's image (a full CDN/Arweave URL) and <code>logoIsFallback</code> is <code>true</code>, so the field is never <code>null</code> for a non-empty collection. Only empty collections (<code>count: 0</code>, not yet synced) can return <code>logo: null</code>.
+            <strong>Logo is always an absolute URL.</strong> <code>logo</code> is a ready-to-render absolute URL &mdash; clients never need to prepend a base path. Resolution order: (1) the collection's curated logo <em>if it is already a full <code>http(s)</code> URL</em> (<code>logoIsFallback: false</code>); otherwise (2) the first synced token's image, a full CDN/Arweave URL (<code>logoIsFallback: true</code>). It is only <code>null</code> when the collection has no renderable token image yet (unsynced or missing image data). The raw curated value from the registry (which may be a bare filename like <code>azuki.png</code> with no resolvable host) is preserved separately in <code>logoFilename</code> for future use, but you should render <code>logo</code>, not <code>logoFilename</code>.
         </div>
 
         <!-- Collection Stats -->
