@@ -122,6 +122,7 @@
         <a href="#overview" class="active">Overview</a>
         <a href="#getting-started">Getting Started</a>
         <a href="#endpoints">Endpoints</a>
+        <a href="#ep-report">Report / Flag</a>
         <a href="#chains">Chains</a>
         <a href="#collections">Collections</a>
         <a href="#architecture">Architecture</a>
@@ -270,6 +271,11 @@
                 <td><span class="method method-get">GET</span> <span class="method method-post">POST</span></td>
                 <td class="endpoint">/api/v1/nft/owners</td>
                 <td>Multi-address merged NFT lookup (max 10)</td>
+            </tr>
+            <tr>
+                <td><span class="method method-post">POST</span> <span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/report</td>
+                <td>Submit / list user "flag this" data-quality reports</td>
             </tr>
         </table>
 
@@ -539,6 +545,52 @@ POST /api/v1/nft/owners</code></pre>
       "block_number": 1234567,
       "timestamp": "2026-01-15T12:30:00Z"
     }
+  ]
+}</code></pre>
+
+        <!-- Reporting -->
+        <h3 id="ep-report">Report an Issue (flag this)</h3>
+        <pre><code>POST /api/v1/report</code></pre>
+        <p>Lets any API-enabled site (e.g. a marketplace or explorer) forward an end-user
+        &ldquo;flag this&rdquo; report about a data-quality issue &mdash; a broken or wrong image, missing
+        metadata, wrong owner, etc. Each project can surface reporting to its own users however it likes;
+        reports land in one shared queue for staff to triage. <strong>Requires an app key</strong> (submit
+        from your backend, not the browser, so the key is not exposed).</p>
+
+        <p><strong>Body (JSON):</strong></p>
+        <table>
+            <tr><th>Field</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td class="endpoint">contractAddress</td><td>string</td><td>yes</td><td>NFT contract address</td></tr>
+            <tr><td class="endpoint">type</td><td>string</td><td>yes</td><td>One of: <code>broken_image</code>, <code>wrong_image</code>, <code>missing_metadata</code>, <code>wrong_trait</code>, <code>wrong_owner</code>, <code>not_synced</code>, <code>other</code></td></tr>
+            <tr><td class="endpoint">chain</td><td>integer</td><td>no</td><td>Chain ID (alias <code>chainId</code>)</td></tr>
+            <tr><td class="endpoint">tokenId</td><td>string</td><td>no</td><td>Specific token; omit for a collection-level report</td></tr>
+            <tr><td class="endpoint">message</td><td>string</td><td>no</td><td>Free text, max 2000 chars</td></tr>
+            <tr><td class="endpoint">reporter</td><td>string</td><td>no</td><td>Who reported (wallet, email, or username)</td></tr>
+        </table>
+
+        <p><strong>Example:</strong></p>
+        <pre><code>curl -X POST https://nft-data.pentagon.games/api/v1/report \
+  -H "X-PG-App-Key: YOUR_KEY" -H "Content-Type: application/json" \
+  -d '{
+    "chain": 3344,
+    "contractAddress": "0x8F83c6122Dd4d275B53a7846B3D3dB29Cca1e698",
+    "tokenId": "9549",
+    "type": "broken_image",
+    "message": "grey background, transparency not removed",
+    "reporter": "0x37224cfd71347da6f097c94b8649f9c552f803c9"
+  }'</code></pre>
+
+        <p><strong>Response:</strong></p>
+        <pre><code>{ "status": "ok", "reportId": 42 }</code></pre>
+
+        <p><strong>List reports (staff triage):</strong> <code>GET /api/v1/report</code> (also app-key gated).
+        Filters: <code>?status=open&amp;chain=3344&amp;contract=0x..&amp;type=broken_image&amp;page=1&amp;limit=50</code>.</p>
+        <pre><code>{
+  "count": 1, "page": 1, "limit": 50,
+  "reports": [
+    { "id": 42, "chain": 3344, "contractAddress": "0x8f83...", "tokenId": "9549",
+      "type": "broken_image", "message": "grey background...", "reporter": "0x3722...",
+      "source": "nftmining", "status": "open", "createdAt": "2026-07-04T07:23:51Z" }
   ]
 }</code></pre>
 
