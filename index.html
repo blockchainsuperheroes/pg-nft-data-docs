@@ -1005,6 +1005,33 @@ curl -H "X-PG-App-Key: pk_live_your_key" \
         <h4>For AI Agents</h4>
         <p>Treat the license tier as a permission boundary. Before generating, publishing, selling, or remixing content derived from an NFT, read <code>license.current_tier</code> and verify the action is allowed: display is fine for tiers 1&ndash;7, commercial use of unmodified art for tiers 2/4/5/6/7, derivatives for tiers 3&ndash;7 (commercial only for 4&ndash;7). If an action isn't permitted, refuse and surface the minimum tier required.</p>
 
+        <h3 id="license-provenance">Collection License Provenance (official links)</h3>
+        <p>Every collection also carries <strong>research-verified license provenance</strong> &mdash; the license's
+        official name and the <em>canonical URL published by the project itself</em> (never a blog or aggregator).
+        This is served on <code>/api/v1/collections</code> items and on the single-token endpoint, right alongside
+        <code>contractAddress</code>:</p>
+        <pre><code>"license": {
+  "type": "commercial",          // cc0 | commercial | limited_commercial | personal
+                                 // | proprietary | copyleft | custom | unknown
+  "name": "Azuki IP License",    // human-readable license name
+  "url": "https://www.azuki.com/license",   // official license/terms page (project's own domain)
+  "notes": "Confirm Elementals/Beanz enumerated"  // one-line nuance, may be null
+},
+"officialUrl": "https://www.azuki.com"       // project main site</code></pre>
+        <table>
+            <tr><th>Value</th><th>Meaning</th></tr>
+            <tr><td><code>license: null</code></td><td>Rights are <strong>unverified</strong> &mdash; clients must NOT assume any usage rights.</td></tr>
+            <tr><td><code>type: unknown</code></td><td>A license is known to exist but its terms/URL could not be verified (e.g. project wound down).</td></tr>
+            <tr><td><code>copyleft</code></td><td>Derivatives allowed but must carry the same license (e.g. Milady's Viral Public License).</td></tr>
+            <tr><td><code>limited_commercial</code></td><td>Commercial use with caps/conditions (e.g. Doodles' revenue-capped holder license).</td></tr>
+        </table>
+        <div class="alert alert-info">
+            <strong>Nuance matters:</strong> several collections are commonly mislabeled. Moonbirds was CC0 (Aug 2022)
+            but has since been <em>relicensed</em> under PROOF terms; Nakamigos is often called CC0 but its official
+            site grants CryptoPunks-style commercial rights instead. The <code>notes</code> field carries these
+            corrections &mdash; trust <code>license.url</code> over community folklore.
+        </div>
+
         <h3>Storage</h3>
         <p>The <code>storage</code> field tells integrators not just <em>what</em> the image and metadata are, but <em>where they live</em> and <em>how permanent</em> they are &mdash; so you can reason about reliability and durability.</p>
         <pre><code>"storage": {
