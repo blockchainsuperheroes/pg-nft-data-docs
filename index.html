@@ -254,6 +254,11 @@
             </tr>
             <tr>
                 <td><span class="method method-get">GET</span></td>
+                <td class="endpoint">/api/v1/collection/{contract}/items</td>
+                <td>Full item index of a collection (paginated)</td>
+            </tr>
+            <tr>
+                <td><span class="method method-get">GET</span></td>
                 <td class="endpoint">/api/v1/collection/:contract/stats</td>
                 <td>Collection ownership statistics</td>
             </tr>
@@ -512,6 +517,49 @@ POST /api/v1/nft/owners</code></pre>
         <div class="alert alert-info">
             <strong>Logo is always an absolute URL.</strong> <code>logo</code> is a ready-to-render absolute URL &mdash; clients never need to prepend a base path. Resolution order: (1) the collection's curated logo <em>if it is already a full <code>http(s)</code> URL</em> (<code>logoIsFallback: false</code>); otherwise (2) the first synced token's image, a full CDN/Arweave URL (<code>logoIsFallback: true</code>). It is only <code>null</code> when the collection has no renderable token image yet (unsynced or missing image data). The raw curated value from the registry (which may be a bare filename like <code>azuki.png</code> with no resolvable host) is preserved separately in <code>logoFilename</code> for future use, but you should render <code>logo</code>, not <code>logoFilename</code>.
         </div>
+
+        <!-- Collection Items (item index) -->
+        <h3 id="ep-collection-items">Collection Item Index</h3>
+        <pre><code>GET /api/v1/collection/{contract}/items</code></pre>
+        <p>Returns <strong>every item (token) in a collection</strong>, paginated &mdash; the collection
+        &ldquo;item index.&rdquo; This is the single source of truth for a collection's enumeration:
+        ownership + names + cached-CDN images + transferable/SBT flags, keyed by <code>tokenId</code>.</p>
+        <div class="alert alert-info">
+            <strong>For marketplaces &amp; indexers:</strong> build your collection grid from this endpoint and
+            join your own data (listings, prices, activity, rarity) by <code>(contractAddress, tokenId)</code>.
+            No consumer should re-crawl the chain for NFT ownership or images &mdash; nft-data is the source of
+            truth (with image backfill + CDN), you maintain listing data only.
+        </div>
+        <table>
+            <tr><th>Parameter</th><th>Type</th><th>Required</th><th>Description</th></tr>
+            <tr><td><code>page</code></td><td>query</td><td>No</td><td>Page number (default 1)</td></tr>
+            <tr><td><code>limit</code></td><td>query</td><td>No</td><td>Items per page (default 50, max 200); echoed as <code>pageSize</code></td></tr>
+            <tr><td><code>owner</code></td><td>query</td><td>No</td><td>Filter to a single holder within the collection</td></tr>
+        </table>
+        <p><strong>Example:</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/collection/0xBF01e486C8315487362e14f32c5b2F05402cd766/items?page=1&amp;limit=50"</code></pre>
+        <p><strong>Response:</strong></p>
+        <pre><code>{
+  "contractAddress": "0xBF01e486...766",
+  "chain": 3344,
+  "collection": "EtherFantasy PentaPet",
+  "total": 10,
+  "page": 1, "limit": 50, "pageSize": 50,
+  "items": [
+    {
+      "tokenId": "10",
+      "name": "Pudde #10",
+      "image": "https://images.pfpvault.com/3344/0xbf01.../10.webp",   // cached CDN
+      "imageOriginal": "https://api.etherfantasy.com/api/pets/image/10",
+      "fileType": "image", "mediaType": "image",
+      "standard": "ERC721",
+      "transferable": false,
+      "owner": "0x03ae56d4...9294",
+      "updatedAt": "2026-07-12T07:30:39+00:00"
+    }
+  ]
+}</code></pre>
+        <p>Page through with <code>page</code>/<code>limit</code> until you have all <code>total</code> items. Returns <code>404</code> if the contract isn't tracked.</p>
 
         <!-- Collection Stats -->
         <h3 id="ep-stats">Collection Stats</h3>
