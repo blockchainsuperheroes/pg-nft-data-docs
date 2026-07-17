@@ -122,6 +122,8 @@
         <a href="#overview" class="active">Overview</a>
         <a href="#getting-started">Getting Started</a>
         <a href="#endpoints">Endpoints</a>
+        <a href="#tradability">Tradability</a>
+        <a href="#ep-rarity">Rarity</a>
         <a href="#ep-report">Report / Flag</a>
         <a href="#chains">Chains</a>
         <a href="#collections">Collections</a>
@@ -535,9 +537,11 @@ POST /api/v1/nft/owners</code></pre>
             <tr><td><code>page</code></td><td>query</td><td>No</td><td>Page number (default 1)</td></tr>
             <tr><td><code>limit</code></td><td>query</td><td>No</td><td>Items per page (default 50, max 200); echoed as <code>pageSize</code></td></tr>
             <tr><td><code>owner</code></td><td>query</td><td>No</td><td>Filter to a single holder within the collection</td></tr>
+            <tr><td><code>include</code></td><td>query</td><td>No</td><td>Comma-list: <code>traits</code> (embeds <code>attributes[]</code>) and/or <code>rarity</code> (embeds <code>rarity{}</code>). Omit for a lean payload. <strong>Use this to bulk-ingest attributes + rarity instead of per-token crawling.</strong></td></tr>
+            <tr><td><code>transferable</code></td><td>query</td><td>No</td><td><code>true</code> = tradable only, <code>false</code> = soulbound/non-tradable only. Omit for all. See <a href="#tradability">Tradability</a>.</td></tr>
         </table>
-        <p><strong>Example:</strong></p>
-        <pre><code>curl "https://nft-data.pentagon.games/api/v1/collection/0xBF01e486C8315487362e14f32c5b2F05402cd766/items?page=1&amp;limit=50"</code></pre>
+        <p><strong>Example (bulk attributes + rarity, one call):</strong></p>
+        <pre><code>curl "https://nft-data.pentagon.games/api/v1/collection/0xed5af38...c544/items?limit=200&amp;include=traits,rarity"</code></pre>
         <p><strong>Response:</strong></p>
         <pre><code>{
   "contractAddress": "0xBF01e486...766",
@@ -560,6 +564,46 @@ POST /api/v1/nft/owners</code></pre>
   ]
 }</code></pre>
         <p>Page through with <code>page</code>/<code>limit</code> until you have all <code>total</code> items. Returns <code>404</code> if the contract isn't tracked.</p>
+
+        <!-- Tradability / Soulbound -->
+        <h3 id="tradability">Tradability &amp; Soulbound</h3>
+        <p>Every item carries a <code>transferable</code> boolean. <strong>nft-data is the source of truth for
+        whether an NFT can be traded</strong> &mdash; marketplaces should depend on this rather than deriving it.</p>
+        <table>
+            <tr><th>Value</th><th>Meaning</th><th>Marketplace behavior</th></tr>
+            <tr><td><code>transferable: true</code></td><td>Standard tradable NFT (default)</td><td>Listable / buyable normally</td></tr>
+            <tr><td><code>transferable: false</code></td><td><strong>Soulbound / locked</strong> &mdash; cannot be transferred</td><td>Do NOT allow listing; hide or clearly flag any existing listing; block purchase</td></tr>
+        </table>
+        <div class="alert alert-info">
+            <strong>Example &mdash; Gunnies PFP:</strong> 9,003 of 9,093 are soulbound. Filter with
+            <code>?transferable=false</code> (soulbound only) or <code>?transferable=true</code> (tradable only)
+            on the item index. Use it to prevent buying a listing that's no longer tradable, or to power a
+            &ldquo;non-tradable&rdquo; filter. The flag is present on the item index, single-token, and owner endpoints.
+        </div>
+
+        <!-- Rarity -->
+        <h3 id="ep-rarity">Rarity</h3>
+        <p>Trait-frequency rarity is <strong>precomputed by nft-data</strong> (so every Pentagon surface shows the
+        <em>same</em> rank for a token) and returned on the single-token endpoint and via
+        <code>?include=rarity</code> on the item index. It ranks within the collection; <code>rank 1</code> = rarest.</p>
+        <pre><code>"rarity": {
+  "rank": 763,            // 1 = rarest, within the collection
+  "totalSupply": 10000,
+  "traitCount": 7,
+  "rarityScore": 744.76,  // rarity.tools style: Σ (total / count(trait value))
+  "infoContent": 34.16    // Σ −log2(freq) — less gameable than rarityScore
+}</code></pre>
+        <p>Two independent standards are exposed so consumers pick: <code>rarityScore</code> (familiar,
+        rarity.tools-compatible) and <code>infoContent</code> (information-theoretic, harder to game by
+        stuffing common traits). <code>rarity</code> is <code>null</code> for collections without indexed traits.</p>
+        <div class="alert alert-info">
+            <strong>Rarity ranks; provenance and notability classify.</strong> Trait frequency is countable, so a
+            rank is a fact. History (hold conviction, wash-trading) and culture (notability) are <em>not</em> a single
+            order &mdash; a conviction-held common and an abandoned rare aren't &ldquo;more or less rare,&rdquo; they're
+            different kinds of object. Those axes are on the roadmap as <strong>classifications</strong> (a label + flags
+            + raw numbers), served <em>beside</em> rarity, once full on-chain transfer history is backfilled &mdash; never
+            blended into one score.
+        </div>
 
         <!-- Collection Stats -->
         <h3 id="ep-stats">Collection Stats</h3>
